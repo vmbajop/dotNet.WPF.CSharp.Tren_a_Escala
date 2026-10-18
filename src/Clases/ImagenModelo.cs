@@ -4,7 +4,11 @@
     {
         public int Id { get; set; }
 
-        public string RutaImagen { get; set; } = "";
+        //public string RutaImagen { get; set; } = "";
+
+        public byte[]? DatosImagen { get; set; }
+
+        public string NombreArchivo { get; set; } = "";
 
         public string Descripcion { get; set; } = "";
 

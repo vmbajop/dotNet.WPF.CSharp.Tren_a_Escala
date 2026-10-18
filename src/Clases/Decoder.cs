@@ -10,7 +10,9 @@ public class Decoder
 
     public string Url { get; set; } = "";
 
-    public string RutaManual { get; set; } = "";
+    //public string RutaManual { get; set; } = "";
+
+    public byte[]? ManualPDF { get; set; }
 
     public string Comentarios { get; set; } = "";
 }

@@ -9,4 +9,6 @@ public class Escala
     public string Proporcion { get; set; } = "";
 
     public decimal AnchoViaModelo { get; set; }
+
+    public int AnchoViaReal { get; set; }
 }

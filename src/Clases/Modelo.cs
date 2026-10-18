@@ -51,19 +51,22 @@ public class Modelo
 
     public int? AnioEdicionLimitada { get; set; }
 
-    public int? DireccionDigital { get; set; }
+    public int? DireccionDigital { get; set; } = 0;
 
     /// <summary>
     /// Tipo de iluminación frontal
     /// </summary>
-    public string IluminacionFrontal { get; set; } = "";
+    public int IluminacionFrontal { get; set; } = 0;
 
     /// <summary>
     /// Tipo de iluminación trasera
     /// </summary>
-    public string IluminacionTrasera { get; set; } = "";
+    public int IluminacionTrasera { get; set; } = 0;
 
-    public bool TieneIluminacionInterior { get; set; } = false;
+    /// <summary>
+    /// cambiado a int porque así esta en la version 3 de RailwayCollection, son 0: No, 1: si, luces normales, 2: si, luces led
+    /// </summary>
+    public int IluminacionInterior { get; set; } = 0;
 
     public List<ImagenModelo> Imagenes { get; set; } = new();
 
