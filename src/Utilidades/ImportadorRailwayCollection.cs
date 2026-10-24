@@ -1,6 +1,7 @@
 ﻿using System.Data.Odbc;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Security.Policy;
 using System.Windows;
 using TrenaEscala.Clases;
 using static System.Runtime.InteropServices.JavaScript.JSType;
@@ -9,12 +10,15 @@ namespace TrenaEscala.Utilidades
 {
     internal class ImportadorRailwayCollection
     {
+        #region Constructor
         private readonly string _cadenaConexion;
         public ImportadorRailwayCollection(string cadenaConexion)
         {
             _cadenaConexion = cadenaConexion;
         }
+        #endregion
 
+        #region Auxiliares
         private OdbcConnection ObtenerConexion()
         {
             try
@@ -49,7 +53,9 @@ namespace TrenaEscala.Utilidades
             }
             return archivo;
         }
+        #endregion
 
+        #region Listas de Objetos
         public List<string> ListarTablas()
         {
             List<string> tablas = new();
@@ -245,9 +251,7 @@ namespace TrenaEscala.Utilidades
             }
 
             return operadores;
-        }
-
-        
+        }        
 
         public List<TipoModelo> ObtenerTablaTiposModelos()
         {
@@ -281,6 +285,30 @@ namespace TrenaEscala.Utilidades
             return tiposModelos;
         }
 
+        private ImagenModelo ObtenerImagenModelo(int modeloId, string nombreImagen)
+        {
+
+            ImagenModelo imagen = new();
+
+            try
+            {
+                {
+                    //imagen.Id no lo pongo, porque no estoy leyendo de ninguna tabla... que lo asigne la BBDD automáticamente
+                    imagen.DatosImagen = ArchivoPath2byte(nombreImagen ?? "", "images");
+                    imagen.NombreArchivo = nombreImagen ?? "";
+                    imagen.Descripcion = ""; // No hay un campo de descripción en la tabla MODELS, así que lo dejamos vacío
+                    imagen.Principal = true; // Por defecto, la primera imagen que se obtiene es la principal
+                };
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al obtener una imagen del modelo {modeloId}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            return imagen;
+        }
+        #endregion
+
+        #region Modelos
         public List<Modelo> FormarModelos()
         {
             using OdbcConnection conexion = ObtenerConexion();
@@ -291,17 +319,10 @@ namespace TrenaEscala.Utilidades
             try
             {
                 using OdbcCommand comando = new(sql, conexion);
-                using OdbcDataReader lector = comando.ExecuteReader();
-
-                lector.Read(); // Muevo el lector al primer registro antes de entrar en el bucle while
-                for (int i = 0; i < lector.FieldCount; i++) 
-                { 
-                    System.Diagnostics.Debug.WriteLine(lector.GetName(i)); 
-                }
-
+                using OdbcDataReader lector = comando.ExecuteReader();                
 
                 while (lector.Read())
-                {
+                {                    
                     Modelo modelo = new()
                     {
                         Id = Convert.ToInt32(lector["MODID"]),
@@ -326,14 +347,13 @@ namespace TrenaEscala.Utilidades
                         TomaEnPantografo = Convert.ToBoolean(lector["MODPANT"]),
                         TieneSonido = Convert.ToBoolean(lector["MODSOUND"]),
                         EsEdicionLimitada = Convert.ToBoolean(lector["MODLIM"]),
-                        AnioEdicionLimitada = lector["MODLIMYEAR"] != DBNull.Value ? Convert.ToInt32(lector["MODLIMYEAR"]) : null, //Año de edición limitada, pero aparece el año de compra de todos los modelos metidos porque RailwayMania lo permitia
-                        DireccionDigital = lector["MODDIGITALADD"] != DBNull.Value ? Convert.ToInt32(lector["MODDIGITALADD"]) : 0,
-                        IluminacionFrontal = lector["MODFRONTLIGHTS"] != DBNull.Value ? Convert.ToInt32(lector["MODFRONTLIGHTS"]) : 0,
-                        //IluminacionTrasera = lector["MODLIGHTREAR"] != DBNull.Value ? 0: Convert.ToInt32(lector["MODLIGHTREAR"]),
-                        IluminacionTrasera = 0,
-                        //IluminacionInterior = lector["MODLIGHTINTERIOR"] != DBNull.Value ? Convert.ToInt32(lector["MODLIGHTINTERIOR"]) : 0,
-                        IluminacionInterior = 0,
-                        Imagenes = ObtenerImagenModelo(Convert.ToInt32(lector["MODID"]), lector["MODPHOTO"].ToString() ?? ""),
+                        AnioEdicionLimitada = lector["MODLIMYEAR"].ToString() ?? "", //Año de edición limitada, pero aparece el año de compra de todos los modelos metidos porque RailwayMania lo permitia
+                        DireccionDigital = lector["MODDIGITALADD"].ToString() ?? "",
+                        IluminacionFrontal = lector["MODFRONTLIGHTS"].ToString() ?? "",
+                        IluminacionTrasera = "0", //Como en el modelo de datos original no aparece ["MODREARLIGHTS"] no puede hacerse lector["MODREARLIGHTS"].ToString() ?? "0",
+                                                  //Pero el campo existe si se activa la propiedad en algun modelo, pero no lo encuentra
+                        IluminacionInterior = "0", //lector["MODINTERIORLIGHTS"].ToString() ?? "0",
+                        Imagenes = new List<ImagenModelo>{ ObtenerImagenModelo(Convert.ToInt32(lector["MODID"]), lector["MODPHOTO"].ToString() ?? "") },
                         Operador = ObtenerOperadorModelo(Convert.ToInt32(lector["MODID"])),
                         Fabricante = ObtenerFabricanteModelo(Convert.ToInt32(lector["MODID"])),
                         Escala = ObtenerEscalaModelo(Convert.ToInt32(lector["MODID"])),
@@ -349,46 +369,155 @@ namespace TrenaEscala.Utilidades
             catch (Exception ex)
             {
                 //Console.WriteLine($"Error al obtener los operadores: {ex.Message}");
-                MessageBox.Show($"Error al obtener los operadores: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show($"Error al obtener los modelos: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
             }
 
             return modelos;
         }
 
-        private List<ImagenModelo> ObtenerImagenModelo(int modeloId, string nombreImagen)
+        public List<Modelo> FormarModelos(bool sobreCarga = true)
         {
             using OdbcConnection conexion = ObtenerConexion();
 
-            List<ImagenModelo> imagenes = new();
-            string sql = "SELECT MODPHOTO FROM MODELS WHERE MODID = ?";
+            List<Modelo> modelos = new();
+
+            // Cargamos los catálogos una única vez
+            List<Operador> operadores = ObtenerTablaOperadores();
+            List<Fabricante> fabricantes = ObtenerTablaFabricantes();
+            List<Escala> escalas = ObtenerTablaEscalas();
+            List<TipoModelo> tiposModelo = ObtenerTablaTiposModelos();
+            List<Tienda> tiendas = ObtenerTablaTiendas();
+            List<Decoder> decoders = ObtenerTablaDecoders();
+
+            string sql = "SELECT * FROM MODELS";
 
             try
             {
                 using OdbcCommand comando = new(sql, conexion);
-                comando.Parameters.AddWithValue("@MODID", modeloId); // Agregamos el parámetro para el ID del modelo, que se engancha al ? de la sentencia SQL
-
                 using OdbcDataReader lector = comando.ExecuteReader();
 
                 while (lector.Read())
                 {
-                    ImagenModelo imagen = new()
+                    int operadorId = lector["MODADMINID"] != DBNull.Value
+                        ? Convert.ToInt32(lector["MODADMINID"])
+                        : 0;
+
+                    int fabricanteId = lector["MODBUILDERID"] != DBNull.Value
+                        ? Convert.ToInt32(lector["MODBUILDERID"])
+                        : 0;
+
+                    int escalaId = lector["MODSCALE"] != DBNull.Value
+                        ? Convert.ToInt32(lector["MODSCALE"])
+                        : 0;
+
+                    int tipoModeloId = lector["MODTYPEID"] != DBNull.Value
+                        ? Convert.ToInt32(lector["MODTYPEID"])
+                        : 0;
+
+                    int tiendaId = lector["MODSTOREID"] != DBNull.Value
+                        ? Convert.ToInt32(lector["MODSTOREID"])
+                        : 0;
+
+                    int decoderId = lector["MODDECODERID"] != DBNull.Value
+                        ? Convert.ToInt32(lector["MODDECODERID"])
+                        : 0;
+
+                    Modelo modelo = new()
                     {
-                        //Id no lo pongo, porque no estoy leyendo de ninguna tabla... que lo asigne la BBDD automáticamente
-                        DatosImagen = ArchivoPath2byte(nombreImagen ?? "", "images"),
-                        NombreArchivo = nombreImagen ?? "",
-                        Descripcion = "", // No hay un campo de descripción en la tabla MODELS, así que lo dejamos vacío
-                        Principal = true // Por defecto, la primera imagen que se obtiene es la principal
+                        Id = Convert.ToInt32(lector["MODID"]),
+                        Nombre = lector["MODNAME"].ToString() ?? "",
+                        Referencia = lector["MODREF"].ToString() ?? "",
+                        Decoracion = lector["MODPAINT"].ToString() ?? "",
+                        Epoca = lector["MODERA"].ToString() ?? "",
+                        Numeral = lector["MODREGNUMBER"].ToString() ?? "",
+                        TipoUic = lector["MODTYPEUIC"].ToString() ?? "",
+                        DescripcionTrenReal = "",
+
+                        PrecioCatalogo = Convert.ToDecimal(lector["MODCATPRICE"]),
+                        PrecioCompra = Convert.ToDecimal(lector["MODBUYPRICE"]),
+
+                        FechaCompra = lector["MODBUYDATE"] != DBNull.Value
+                            ? Convert.ToDateTime(lector["MODBUYDATE"])
+                            : null,
+
+                        Vendido = false,
+                        PrecioVenta = 0,
+                        FechaVenta = null,
+
+                        Unidades = Convert.ToInt32(lector["MODUNITS"]),
+                        ModeloDeseado = false,
+
+                        LongitudModelo = Convert.ToInt32(lector["MODLENGTH"]),
+
+                        TieneNem = Convert.ToBoolean(lector["MODNEM"]),
+                        TieneKkk = Convert.ToBoolean(lector["MODKKK"]),
+                        TomaEnPantografo = Convert.ToBoolean(lector["MODPANT"]),
+                        TieneSonido = Convert.ToBoolean(lector["MODSOUND"]),
+
+                        EsEdicionLimitada = Convert.ToBoolean(lector["MODLIM"]),
+
+                        AnioEdicionLimitada =
+                            lector["MODLIMYEAR"].ToString() ?? "",
+
+                        DireccionDigital =
+                            lector["MODDIGITALADD"].ToString() ?? "",
+
+                        IluminacionFrontal =
+                            lector["MODFRONTLIGHTS"].ToString() ?? "",
+
+                        IluminacionTrasera = "0", //lector["MODREARLIGHTS"].ToString() ?? "0",
+                        IluminacionInterior = "0", //lector["MODINTERIORLIGHTS"].ToString() ?? "0",
+
+                        Imagenes = new List<ImagenModelo> { ObtenerImagenModelo(
+                            Convert.ToInt32(lector["MODID"]),
+                            lector["MODPHOTO"].ToString() ?? "") },
+
+                        Operador = operadores.FirstOrDefault(o => o.Id == operadorId),
+
+                        //Esto hace --> De la lista operadores, dame el primer operador cuyo Id sea igual a operadorId.
+                        //La lista de operadores ha sido obtenida arriba con List<Operador> operadores = ObtenerTablaOperadores();
+                        //Esto es lo mismo que hacer lo siguiente:
+                        /*
+                        
+                        foreach (Operador o in operadores)
+                        {
+                            if (o.Id == operadorId)
+                            {
+                                Operador? operadorEncontrado = o;
+                                break;
+                            }
+                        }*/
+
+                        Fabricante = fabricantes.FirstOrDefault(f => f.Id == fabricanteId),
+
+                        Escala = escalas.FirstOrDefault(e => e.Id == escalaId),
+
+                        TipoModelo = tiposModelo.FirstOrDefault(t => t.Id == tipoModeloId),
+
+                        Tienda = tiendas.FirstOrDefault(t => t.Id == tiendaId),
+
+                        Decoder = decoders.FirstOrDefault(d => d.Id == decoderId),
+
+                        Comentarios = lector["MODDESC"].ToString() ?? ""
                     };
-                    imagenes.Add(imagen);
+
+                    modelos.Add(modelo);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error al obtener las imágenes del modelo {modeloId}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(
+                    $"Error al obtener los modelos: {ex.Message}",
+                    "Error",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
             }
-            return imagenes;
-        }
 
+            return modelos;
+        }
+        #endregion
+
+        #region Obtener objetos relacionados con el modelo
         private Operador ObtenerOperadorModelo(int modeloId)
         {
             using OdbcConnection conexion = ObtenerConexion();
@@ -439,27 +568,261 @@ namespace TrenaEscala.Utilidades
 
         private Fabricante ObtenerFabricanteModelo(int modeloId)
         {
-            return new Fabricante();
+            using OdbcConnection conexion = ObtenerConexion();
+
+            Fabricante fabricante = new();
+
+            string sqlAdminInModels = "SELECT MODBUILDERID FROM MODELS WHERE MODID = ?";
+            
+            string sql = "SELECT * FROM BUILDERS WHERE BUILDID = ?";
+
+            int fabricanteId = -1;
+
+            try
+            {
+                using OdbcCommand comando = new(sqlAdminInModels, conexion);
+                comando.Parameters.AddWithValue("@MODID", modeloId); // Agregamos el parámetro para el ID del modelo, que se engancha al ? de la sentencia SQL
+
+                using OdbcDataReader lector = comando.ExecuteReader();
+
+                if (lector.Read())
+                {
+                    fabricanteId = lector[0] != DBNull.Value ? Convert.ToInt32(lector[0]) : 0;
+                }
+
+                if (fabricanteId > 0)
+                {
+                    using OdbcCommand comando2 = new(sql, conexion);
+
+                    comando2.Parameters.AddWithValue("@BUILDID", fabricanteId);
+
+                    using OdbcDataReader lectorFabricante = comando2.ExecuteReader();
+
+                    if (lectorFabricante.Read())
+                    {
+                        fabricante.Id = Convert.ToInt32(lectorFabricante["BUILDID"]);
+                        fabricante.Nombre = lectorFabricante["BUILDNAME"].ToString() ?? "";
+                        fabricante.Descripcion = lectorFabricante["BUILDDESC"].ToString() ?? "";
+                        fabricante.Direccion = lectorFabricante["BUILDADDRESS"].ToString() ?? "";
+                        fabricante.Url = lectorFabricante["BUILDURL"].ToString() ?? "";
+                        fabricante.Telefono = "";
+                        fabricante.Comentarios = "";
+                        fabricante.Activo = true;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al obtener el fabricante del modelo {modeloId}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            
+            return fabricante;
         }
 
         private Escala ObtenerEscalaModelo(int modeloId)
         {
-            return new Escala();
+            using OdbcConnection conexion = ObtenerConexion();
+
+            Escala escala = new();
+
+            string sqlAdminInModels = "SELECT MODSCALE FROM MODELS WHERE MODID = ?";
+
+            string sql = "SELECT * FROM SCALES WHERE SCID = ?";
+
+            int escalaId = -1;
+
+            try
+            {
+                using OdbcCommand comando = new(sqlAdminInModels, conexion);
+                comando.Parameters.AddWithValue("@MODID", modeloId); // Agregamos el parámetro para el ID del modelo, que se engancha al ? de la sentencia SQL
+
+                using OdbcDataReader lector = comando.ExecuteReader();
+
+                if (lector.Read())
+                {
+                    escalaId = lector[0] != DBNull.Value ? Convert.ToInt32(lector[0]) : 0;
+                }
+
+                if (escalaId > 0)
+                {
+                    using OdbcCommand comando2 = new(sql, conexion);
+
+                    comando2.Parameters.AddWithValue("@SCID", escalaId);
+
+                    using OdbcDataReader lectorEscala = comando2.ExecuteReader();
+
+                    if (lectorEscala.Read())
+                    {
+                        escala.Id = Convert.ToInt32(lectorEscala["SCID"]);
+                        escala.Nombre = lectorEscala["SCNAME"].ToString() ?? "";
+                        escala.Proporcion = lectorEscala["SCSCALE"].ToString() ?? "";
+                        escala.AnchoViaModelo = Convert.ToDecimal(lectorEscala["SCTWIDTH"]);
+                        escala.AnchoViaReal = Convert.ToInt32(lectorEscala["SCRTWIDTH"]);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al obtener la Escala del modelo {modeloId}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+
+            return escala;
         }
 
         private TipoModelo ObtenerTipoModelo(int modeloId)
         {
-            return new TipoModelo();
+            using OdbcConnection conexion = ObtenerConexion();
+
+            TipoModelo tipoModelo = new();
+
+            string sqlAdminInModels = "SELECT MODTYPEID FROM MODELS WHERE MODID = ?";
+
+            string sql = "SELECT * FROM TYPES WHERE TYPEID = ?";
+
+            int tipoId = -1;
+
+            try
+            {
+                using OdbcCommand comando = new(sqlAdminInModels, conexion);
+                comando.Parameters.AddWithValue("@MODID", modeloId); // Agregamos el parámetro para el ID del modelo, que se engancha al ? de la sentencia SQL
+
+                using OdbcDataReader lector = comando.ExecuteReader();
+
+                if (lector.Read())
+                {
+                    tipoId = lector[0] != DBNull.Value ? Convert.ToInt32(lector[0]) : 0;
+                }
+
+                if (tipoId > 0)
+                {
+                    using OdbcCommand comando2 = new(sql, conexion);
+
+                    comando2.Parameters.AddWithValue("@TYPEID", tipoId);
+
+                    using OdbcDataReader lectorEscala = comando2.ExecuteReader();
+
+                    if (lectorEscala.Read())
+                    {
+                        tipoModelo.Id = Convert.ToInt32(lectorEscala["TYPEID"]);
+                        tipoModelo.Nombre = lectorEscala["TYPENAME"].ToString() ?? "";
+                        tipoModelo.Icono = ""; // El TypeIcon está vacio en RailwayCollection, así que lo dejamos vacío
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al obtener el tipo de modelo {modeloId}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+
+            return tipoModelo;
         }
 
         private Tienda ObtenerTiendaModelo(int modeloId)
         {
-            return new Tienda();
+            using OdbcConnection conexion = ObtenerConexion();
+
+            Tienda tienda = new();
+
+            string sqlAdminInModels = "SELECT MODSTOREID FROM MODELS WHERE MODID = ?";
+
+            string sql = "SELECT * FROM STORES WHERE STOREID = ?";
+
+            int tiendaId = -1;
+
+            try
+            {
+                using OdbcCommand comando = new(sqlAdminInModels, conexion);
+                comando.Parameters.AddWithValue("@MODID", modeloId); // Agregamos el parámetro para el ID del modelo, que se engancha al ? de la sentencia SQL
+
+                using OdbcDataReader lector = comando.ExecuteReader();
+
+                if (lector.Read())
+                {
+                    tiendaId = lector[0] != DBNull.Value ? Convert.ToInt32(lector[0]) : 0;
+                }
+
+                if (tiendaId > 0)
+                {
+                    using OdbcCommand comando2 = new(sql, conexion);
+
+                    comando2.Parameters.AddWithValue("@STOREID", tiendaId);
+
+                    using OdbcDataReader lectorEscala = comando2.ExecuteReader();
+
+                    if (lectorEscala.Read())
+                    {
+                        tienda.Id = Convert.ToInt32(lectorEscala["STOREID"]);
+                        tienda.Nombre = lectorEscala["STORENAME"].ToString() ?? "";
+                        tienda.Direccion = lectorEscala["STOREADDRESS"].ToString() ?? "";
+                        tienda.Telefono = lectorEscala["STOREPHONE"].ToString() ?? "";
+                        tienda.Fax = lectorEscala["STOREFAX"].ToString() ?? "";
+                        tienda.CorreoElectronico = lectorEscala["STOREMAIL"].ToString() ?? "";
+                        tienda.Url = lectorEscala["STOREURL"].ToString() ?? "";
+                        tienda.Descripcion = lectorEscala["STOREDESC"].ToString() ?? "";
+                        tienda.SigueAbierta = true; // No hay un campo de estado en la tabla STORES, así que lo dejamos como true por defecto
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al obtener la tienda del modelo {modeloId}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+
+            return tienda;
         }
 
         private Decoder ObtenerDecoderModelo(int modeloId)
         {
-            return new Decoder();
+            using OdbcConnection conexion = ObtenerConexion();
+
+            Decoder decoder = new();
+
+            string sqlAdminInModels = "SELECT MODDECODERID FROM MODELS WHERE MODID = ?";
+
+            string sql = "SELECT * FROM DECODERS WHERE DECID = ?";
+
+            int decoderId = -1;
+
+            try
+            {
+                using OdbcCommand comando = new(sqlAdminInModels, conexion);
+                comando.Parameters.AddWithValue("@MODID", modeloId); // Agregamos el parámetro para el ID del modelo, que se engancha al ? de la sentencia SQL
+
+                using OdbcDataReader lector = comando.ExecuteReader();
+
+                if (lector.Read())
+                {
+                    decoderId = lector[0] != DBNull.Value ? Convert.ToInt32(lector[0]) : 0;
+                }
+
+                if (decoderId > 0)
+                {
+                    using OdbcCommand comando2 = new(sql, conexion);
+
+                    comando2.Parameters.AddWithValue("@DECID", decoderId);
+
+                    using OdbcDataReader lectorEscala = comando2.ExecuteReader();
+
+                    if (lectorEscala.Read())
+                    {
+                        decoder.Id = Convert.ToInt32(lectorEscala["DECID"]);
+                        decoder.Nombre = lectorEscala["DECNAME"].ToString() ?? "";
+                        decoder.Descripcion = lectorEscala["DECDESC"].ToString() ?? "";
+                        decoder.Url = lectorEscala["DECWEB"].ToString() ?? "";
+                        decoder.ManualPDF = ArchivoPath2byte(lectorEscala["DECFILE"].ToString() ?? "", "manuals");
+                        decoder.Comentarios = "";
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error al obtener el decoder del modelo {modeloId}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+
+            return decoder;
         }
+        #endregion
+
+        
     }
 }

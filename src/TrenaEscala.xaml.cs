@@ -57,10 +57,8 @@ public partial class MainWindow : Window
         MessageBox.Show("Operadores encontrados:\n" + string.Join("\n", operadores.Select(o => o.Nombre)));*/
 
         
-        List<Modelo> modelos = importador.FormarModelos();
+        List<Modelo> modelos = importador.FormarModelos(true);
         MessageBox.Show("Modelos encontrados:\n" + string.Join("\n", modelos.Select(m => m.Nombre)));
-
-
 
     }
 }
