@@ -29,8 +29,8 @@ namespace TrenaEscala.Utilidades
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error al conectar a la base de datos: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                throw;
+                //MessageBox.Show($"Error al conectar a la base de datos: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                throw new Exception($"Error al abrir la conexión a la base de datos: {ex.Message}", ex);
             }            
         }
 
@@ -55,7 +55,7 @@ namespace TrenaEscala.Utilidades
         }
         #endregion
 
-        #region Listas de Objetos
+        #region Listas de Objetos relacionados con el modelo
         public List<string> ListarTablas()
         {
             List<string> tablas = new();
@@ -101,8 +101,7 @@ namespace TrenaEscala.Utilidades
             }
             catch (Exception ex)
             {
-                //Console.WriteLine($"Error al obtener las escalas: {ex.Message}");
-                MessageBox.Show($"Error al obtener las escalas: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                throw new Exception($"Error al obtener las escalas: {ex.Message}", ex);
             }
             return escalas;
         }
@@ -138,7 +137,8 @@ namespace TrenaEscala.Utilidades
             catch (Exception ex)
             {
                 //Console.WriteLine($"Error al obtener los operadores: {ex.Message}");
-                MessageBox.Show($"Error al obtener los operadores: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                throw new Exception($"Error al obtener los fabricantes: {ex.Message}", ex);
+
             }
 
             return fabricantes;
@@ -175,8 +175,7 @@ namespace TrenaEscala.Utilidades
             }
             catch (Exception ex)
             {
-                //Console.WriteLine($"Error al obtener los operadores: {ex.Message}");
-                MessageBox.Show($"Error al obtener los operadores: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                throw new Exception($"Error al obtener las tiendas: {ex.Message}", ex);
             }
 
             return tiendas;
@@ -210,8 +209,7 @@ namespace TrenaEscala.Utilidades
             }
             catch (Exception ex)
             {
-                //Console.WriteLine($"Error al obtener los operadores: {ex.Message}");
-                MessageBox.Show($"Error al obtener los operadores: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                throw new Exception($"Error al obtener los decoders: {ex.Message}", ex);
             }
 
             return decoders;
@@ -246,8 +244,7 @@ namespace TrenaEscala.Utilidades
             }
             catch (Exception ex)
             {
-                //Console.WriteLine($"Error al obtener los operadores: {ex.Message}");
-                MessageBox.Show($"Error al obtener los operadores: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                throw new Exception($"Error al obtener los operadores: {ex.Message}", ex);
             }
 
             return operadores;
@@ -278,34 +275,12 @@ namespace TrenaEscala.Utilidades
             }
             catch (Exception ex)
             {
-                //Console.WriteLine($"Error al obtener los operadores: {ex.Message}");
-                MessageBox.Show($"Error al obtener los operadores: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                throw new Exception($"Error al obtener los tipos de modelos: {ex.Message}", ex);
             }
 
-            return tiposModelos;
-        }
+            return tiposModelos;        }
 
-        private ImagenModelo ObtenerImagenModelo(int modeloId, string nombreImagen)
-        {
-
-            ImagenModelo imagen = new();
-
-            try
-            {
-                {
-                    //imagen.Id no lo pongo, porque no estoy leyendo de ninguna tabla... que lo asigne la BBDD automáticamente
-                    imagen.DatosImagen = ArchivoPath2byte(nombreImagen ?? "", "images");
-                    imagen.NombreArchivo = nombreImagen ?? "";
-                    imagen.Descripcion = ""; // No hay un campo de descripción en la tabla MODELS, así que lo dejamos vacío
-                    imagen.Principal = true; // Por defecto, la primera imagen que se obtiene es la principal
-                };
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error al obtener una imagen del modelo {modeloId}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-            return imagen;
-        }
+        
         #endregion
 
         #region Modelos
@@ -368,8 +343,7 @@ namespace TrenaEscala.Utilidades
             }
             catch (Exception ex)
             {
-                //Console.WriteLine($"Error al obtener los operadores: {ex.Message}");
-                MessageBox.Show($"Error al obtener los modelos: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                throw new Exception($"Error al formar los modelos: {ex.Message}", ex);
             }
 
             return modelos;
@@ -506,11 +480,7 @@ namespace TrenaEscala.Utilidades
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
-                    $"Error al obtener los modelos: {ex.Message}",
-                    "Error",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+                throw new Exception($"Error al formar los modelos: {ex.Message}", ex);
             }
 
             return modelos;
@@ -561,9 +531,32 @@ namespace TrenaEscala.Utilidades
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error al obtener el Operador del modelo {modeloId}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                throw new Exception($"Error un opereador de un modelo: {ex.Message}", ex);
             }
             return operador;
+        }
+
+        private ImagenModelo ObtenerImagenModelo(int modeloId, string nombreImagen)
+        {
+
+            ImagenModelo imagen = new();
+
+            try
+            {
+                {
+                    //imagen.Id no lo pongo, porque no estoy leyendo de ninguna tabla... que lo asigne la BBDD automáticamente
+                    imagen.DatosImagen = ArchivoPath2byte(nombreImagen ?? "", "images");
+                    imagen.NombreArchivo = nombreImagen ?? "";
+                    imagen.Descripcion = ""; // No hay un campo de descripción en la tabla MODELS, así que lo dejamos vacío
+                    imagen.Principal = true; // Por defecto, la primera imagen que se obtiene es la principal
+                }
+                ;
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error al obtener una imagen de un modelo: {ex.Message}", ex);
+            }
+            return imagen;
         }
 
         private Fabricante ObtenerFabricanteModelo(int modeloId)
@@ -613,7 +606,7 @@ namespace TrenaEscala.Utilidades
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error al obtener el fabricante del modelo {modeloId}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                throw new Exception($"Error al obtener el fabricante de un modelo: {ex.Message}", ex);
             }
             
             return fabricante;
@@ -663,7 +656,7 @@ namespace TrenaEscala.Utilidades
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error al obtener la Escala del modelo {modeloId}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                throw new Exception($"Error al obtener la escala de un modelo: {ex.Message}", ex);
             }
 
             return escala;
@@ -711,7 +704,7 @@ namespace TrenaEscala.Utilidades
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error al obtener el tipo de modelo {modeloId}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                throw new Exception($"Error al obtener el tipo de modelo: {ex.Message}", ex);
             }
 
             return tipoModelo;
@@ -765,7 +758,7 @@ namespace TrenaEscala.Utilidades
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error al obtener la tienda del modelo {modeloId}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                throw new Exception($"Error al obtener la tienda del modelo: {ex.Message}", ex);
             }
 
             return tienda;
@@ -816,7 +809,7 @@ namespace TrenaEscala.Utilidades
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error al obtener el decoder del modelo {modeloId}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                throw new Exception($"Error al obtener el decoder de un modelo: {ex.Message}", ex);
             }
 
             return decoder;

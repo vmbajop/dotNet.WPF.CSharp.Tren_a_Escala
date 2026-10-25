@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Runtime.CompilerServices;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
@@ -9,6 +10,8 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using TrenaEscala.Clases;
+using TrenaEscala.Configuracion;
+using TrenaEscala.Data;
 using TrenaEscala.Utilidades;
 
 namespace TrenaEscala;
@@ -18,13 +21,14 @@ namespace TrenaEscala;
 /// </summary>
 public partial class MainWindow : Window
 {
+    private string _rutaBDcreadaConEFCore = (@"C:\trabajo\desarrollo\dotnet\dotNet.WPF.CSharp.Tren_a_Escala\src\trenaescala.db");
     public MainWindow()
     {
         InitializeComponent();
 
-        string cadenaConexion = @"Driver={Microsoft Access Driver (*.mdb, *.accdb)};Dbq=C:\trabajo\desarrollo\dotnet\dotNet.WPF.CSharp.Tren_a_Escala\data\collection.dat;Uid=Admin;Pwd=;";
+        //string cadenaConexion = @"Driver={Microsoft Access Driver (*.mdb, *.accdb)};Dbq=C:\trabajo\desarrollo\dotnet\dotNet.WPF.CSharp.Tren_a_Escala\data\collection.dat;Uid=Admin;Pwd=;";
 
-        ImportadorRailwayCollection importador = new(cadenaConexion);
+        //ImportadorRailwayCollection importador = new(cadenaConexion);
 
         /*string c = "";
         string conexionExitosa = importador.ProbarConexion(c);
@@ -56,9 +60,33 @@ public partial class MainWindow : Window
         List<Operador> operadores = importador.ObtenerTablaOperadores();
         MessageBox.Show("Operadores encontrados:\n" + string.Join("\n", operadores.Select(o => o.Nombre)));*/
 
-        
-        List<Modelo> modelos = importador.FormarModelos(true);
-        MessageBox.Show("Modelos encontrados:\n" + string.Join("\n", modelos.Select(m => m.Nombre)));
 
+        /*List<Modelo> modelos = importador.FormarModelos(true);
+        MessageBox.Show("Modelos encontrados:\n" + string.Join("\n", modelos.Select(m => m.Nombre)));*/
+
+
+
+        /*using TrenaEscalaContext contexto = new(_rutaBDcreadaConEFCore);
+
+        Operador operador = new()
+        {
+            Nombre= "prueba",
+            Descripcion = "Operador de pruebas en fase de desarrollo",
+            Url="https://google.es",
+            Comentarios="Registro generado mediante EF Core"
+        };
+        contexto.Operadores.Add(operador);
+        contexto.SaveChanges();*/
+
+        string rutaconfig = @"C:\trabajo\desarrollo\dotnet\dotNet.WPF.CSharp.Tren_a_Escala\src\Configuracion\configuracion.json";
+
+        GestorConfiguracion gestor = new(rutaconfig);
+
+        ConfiguracionAplicacion config = new()
+        {
+            RutaBbddSQLite = @"C:\trabajo\desarrollo\dotnet\dotNet.WPF.CSharp.Tren_a_Escala\src\trenaescala.db"
+        };
+
+        gestor.GuardarConfiguracion(config);
     }
 }
